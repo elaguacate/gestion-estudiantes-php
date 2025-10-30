@@ -1,0 +1,228 @@
+<?php
+/**
+ * Actividad Formativa 3 - Herencia sobre el proyecto de la Unidad 2
+ * Proyecto base: Gestión de Estudiantes (POO en PHP)
+ *
+ * En la Unidad 2 teníamos:
+ *  - Clase base: Persona
+ *  - Subclase: Estudiante
+ *  - Clase de gestión: GestorEstudiantes
+ *
+ * En la Unidad 3 agregamos:
+ *  - Otra(s) subclase(s) que heredan de Persona (Profesor, Administrador)
+ *  - Sobrescritura de métodos
+ *  - Pruebas creando objetos de las subclases
+ */
+
+/* =========================
+ * 1) CLASE BASE
+ * ========================= */
+
+class Persona {
+    protected $nombre;
+    protected $email;
+
+    public function __construct($nombre, $email) {
+        $this->nombre = $nombre;
+        $this->email  = $email;
+    }
+
+    public function getNombre() { return $this->nombre; }
+    public function getEmail()  { return $this->email; }
+
+    /**
+     * Método genérico que las subclases pueden sobrescribir
+     */
+    public function resumen() {
+        return "Persona: {$this->nombre} ({$this->email})";
+    }
+}
+
+/* =========================
+ * 2) SUBCLASE EXISTENTE: ESTUDIANTE
+ * ========================= */
+
+class Estudiante extends Persona {
+    private $matricula;
+    private $calificaciones; // [materia => float]
+
+    public function __construct($nombre, $email, $matricula) {
+        parent::__construct($nombre, $email);
+        $this->matricula = $matricula;
+        $this->calificaciones = array();
+    }
+
+    public function getMatricula() { return $this->matricula; }
+
+    public function agregarCalificacion($materia, $calificacion) {
+        // Validación mínima
+        if (!is_numeric($calificacion) || $calificacion < 0 || $calificacion > 100) {
+            throw new InvalidArgumentException("La calificación debe estar entre 0 y 100.");
+        }
+        $this->calificaciones[$materia] = floatval($calificacion);
+    }
+
+    public function promedio() {
+        if (empty($this->calificaciones)) return 0.0;
+        return array_sum($this->calificaciones) / count($this->calificaciones);
+    }
+
+    /**
+     * SOBRESCRITURA del método resumen() de Persona
+     */
+    public function resumen() {
+        $prom = number_format($this->promedio(), 2);
+        return "Estudiante: {$this->nombre} [{$this->matricula}] - Email: {$this->email} - Promedio: {$prom}";
+    }
+}
+
+/* =========================
+ * 3) NUEVA SUBCLASE: PROFESOR
+ * ========================= */
+
+class Profesor extends Persona {
+    private $especialidad;
+    private $salario;
+
+    public function __construct($nombre, $email, $especialidad, $salario = 0) {
+        parent::__construct($nombre, $email);
+        $this->especialidad = $especialidad;
+        $this->salario = $salario;
+    }
+
+    public function getEspecialidad() { return $this->especialidad; }
+
+    public function setSalario($salario) { $this->salario = $salario; }
+
+    /**
+     * Sobrescribimos para mostrar datos propios del profesor
+     */
+    public function resumen() {
+        return "Profesor: {$this->nombre} - {$this->especialidad} - Email: {$this->email} - Salario: {$this->salario}";
+    }
+
+    // método exclusivo de profesor
+    public function impartirClase($materia) {
+        return "{$this->nombre} está impartiendo la materia de {$materia}.";
+    }
+}
+
+/* =========================
+ * 4) OTRA SUBCLASE: ADMINISTRADOR / STAFF
+ * ========================= */
+
+class Administrador extends Persona {
+    private $rol;
+
+    public function __construct($nombre, $email, $rol) {
+        parent::__construct($nombre, $email);
+        $this->rol = $rol;
+    }
+
+    public function getRol() { return $this->rol; }
+
+    public function resumen() {
+        return "Administrador: {$this->nombre} - Rol: {$this->rol} - Email: {$this->email}";
+    }
+
+    // método propio
+    public function generarReporte() {
+        return "El administrador {$this->nombre} está generando un reporte del sistema.";
+    }
+}
+
+/* =========================
+ * 5) GESTOR (lo dejamos tal cual tu versión original)
+ * ========================= */
+
+class GestorEstudiantes {
+    // índice por matrícula
+    private $estudiantes = array();
+
+    public function agregar(Estudiante $e) {
+        $id = $e->getMatricula();
+        if (isset($this->estudiantes[$id])) {
+            throw new RuntimeException("La matrícula $id ya existe.");
+        }
+        $this->estudiantes[$id] = $e;
+    }
+
+    public function obtenerPorMatricula($matricula) {
+        return isset($this->estudiantes[$matricula]) ? $this->estudiantes[$matricula] : null;
+    }
+
+    public function listar() {
+        return array_values($this->estudiantes);
+    }
+
+    public function eliminar($matricula) {
+        if (!isset($this->estudiantes[$matricula])) return false;
+        unset($this->estudiantes[$matricula]);
+        return true;
+    }
+}
+
+/* =========================
+ * 6) PRUEBAS / "MAIN"
+ * ========================= */
+
+// 6.1 seguimos probando estudiantes (como en tu versión)
+$gestor = new GestorEstudiantes();
+
+$e1 = new Estudiante("Ana López",    "ana@example.com",   "A001");
+$e2 = new Estudiante("Luis Ramírez", "luis@example.com",  "A002");
+$e3 = new Estudiante("Marta Díaz",   "marta@example.com", "A003");
+
+$e1->agregarCalificacion("POO", 95);
+$e1->agregarCalificacion("BD",  88);
+
+$e2->agregarCalificacion("POO", 72);
+$e2->agregarCalificacion("BD",  80);
+$e2->agregarCalificacion("Redes", 90);
+
+$e3->agregarCalificacion("POO", 100);
+
+$gestor->agregar($e1);
+$gestor->agregar($e2);
+$gestor->agregar($e3);
+
+echo "=== LISTA DE ESTUDIANTES ===\n";
+foreach ($gestor->listar() as $est) {
+    echo $est->resumen() . "\n";   // Llama al resumen() sobrescrito de Estudiante
+}
+
+echo "\n=== BUSCAR A002 ===\n";
+$buscado = $gestor->obtenerPorMatricula("A002");
+echo $buscado ? $buscado->resumen() . "\n" : "No encontrado\n";
+
+echo "\n=== ELIMINAR A003 ===\n";
+$gestor->eliminar("A003");
+foreach ($gestor->listar() as $est) {
+    echo $est->resumen() . "\n";
+}
+
+// 6.2 AHORA: probamos las NUEVAS subclases para la Unidad 3
+echo "\n=== PRUEBA DE HERENCIA CON OTRAS SUBCLASES ===\n";
+
+$prof = new Profesor("Carlos Torres", "carlos.prof@example.com", "Programación Orientada a Objetos", 18000);
+echo $prof->resumen() . "\n";
+echo $prof->impartirClase("POO") . "\n";
+
+$admin = new Administrador("Grecia Ponce", "grecia.admin@example.com", "Control escolar");
+echo $admin->resumen() . "\n";
+echo $admin->generarReporte() . "\n";
+
+/*
+ Salida esperada (resumida):
+
+ === LISTA DE ESTUDIANTES ===
+ Estudiante: Ana López [A001] - Email: ana@example.com - Promedio: 91.50
+ Estudiante: Luis Ramírez [A002] - Email: luis@example.com - Promedio: 80.67
+ Estudiante: Marta Díaz [A003] - Email: marta@example.com - Promedio: 100.00
+
+ === PRUEBA DE HERENCIA CON OTRAS SUBCLASES ===
+ Profesor: Carlos Torres - Programación Orientada a Objetos - Email: carlos.prof@example.com - Salario: 18000
+ Carlos Torres está impartiendo la materia de POO.
+ Administrador: Grecia Ponce - Rol: Control escolar - Email: grecia.admin@example.com
+ El administrador Grecia Ponce está generando un reporte del sistema.
+ */
